@@ -6,6 +6,7 @@ pipeline {
         DOCKER_TAG = "${BUILD_NUMBER}"
         CONTAINER_NAME = 'travel-agency-app'
         PORT = '5173'
+        ENV_FILE = credentials('travel-agency-env')
     }
     
     stages {
@@ -18,12 +19,9 @@ pipeline {
         
         stage('Environment Setup') {
             steps {
-                echo 'Setting up environment variables...'
-                // Make sure .env.local exists
+                echo 'Copying environment file from credentials...'
                 script {
-                    if (!fileExists('.env.local')) {
-                        error('.env.local file not found! Please add it to Jenkins credentials or workspace.')
-                    }
+                    sh 'cp $ENV_FILE .env.local'
                 }
             }
         }
