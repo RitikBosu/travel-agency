@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  travel-agency:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Build-time env vars for client-side code (VITE_ prefix)
+        - VITE_APPWRITE_API_ENDPOINT=${VITE_APPWRITE_API_ENDPOINT}
+        - VITE_APPWRITE_PROJECT_ID=${VITE_APPWRITE_PROJECT_ID}
+        - VITE_APPWRITE_DATABASE_ID=${VITE_APPWRITE_DATABASE_ID}
+        - VITE_APPWRITE_USERS_COLLECTION_ID=${VITE_APPWRITE_USERS_COLLECTION_ID}
+        - VITE_APPWRITE_TRIPS_COLLECTION_ID=${VITE_APPWRITE_TRIPS_COLLECTION_ID}
+        - VITE_SYNCFUSION_LICENSE_KEY=${VITE_SYNCFUSION_LICENSE_KEY}
+        - VITE_BASE_URL=${VITE_BASE_URL}
+    ports:
+      - "3000:3000"
+    environment:
+      # Runtime environment variables for server-side API routes
+      - NODE_ENV=production
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - UNSPLASH_ACCESS_KEY=${UNSPLASH_ACCESS_KEY}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - VITE_APPWRITE_API_KEY=${VITE_APPWRITE_API_KEY}
+      - VITE_BASE_URL=${VITE_BASE_URL}
+      # Client-side env vars (also needed at runtime for SSR)
+      - VITE_APPWRITE_API_ENDPOINT=${VITE_APPWRITE_API_ENDPOINT}
+      - VITE_APPWRITE_PROJECT_ID=${VITE_APPWRITE_PROJECT_ID}
+      - VITE_APPWRITE_DATABASE_ID=${VITE_APPWRITE_DATABASE_ID}
+      - VITE_APPWRITE_USERS_COLLECTION_ID=${VITE_APPWRITE_USERS_COLLECTION_ID}
+      - VITE_APPWRITE_TRIPS_COLLECTION_ID=${VITE_APPWRITE_TRIPS_COLLECTION_ID}
+      - VITE_SYNCFUSION_LICENSE_KEY=${VITE_SYNCFUSION_LICENSE_KEY}
+    volumes:
+      # Optional: Mount .env.local as backup
+      - ./.env.local:/app/.env.local:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    container_name: travel-agency-app
+    networks:
+      - travel-network
+
+networks:
+  travel-network:
+    driver: bridge
