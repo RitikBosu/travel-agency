@@ -2,12 +2,11 @@ pipeline {
     agent any
     
     environment {
-        ENV_FILE = credentials('travel-agency-env')
+        DOCKER_IMAGE = 'travel-agency'
+        DOCKER_TAG = "${BUILD_NUMBER}"
+        CONTAINER_NAME = 'travel-agency-app'
         PORT = '5173'
-    }
-    
-    tools {
-        nodejs 'NodeJS'  // Configure this in Jenkins Global Tool Configuration
+        ENV_FILE = credentials('travel-agency-env')
     }
     
     stages {
@@ -20,44 +19,47 @@ pipeline {
         
         stage('Environment Setup') {
             steps {
-                echo 'Setting up environment file...'
+                echo 'Copying environment file from credentials...'
                 script {
                     bat "copy \"%ENV_FILE%\" .env.local"
                 }
             }
         }
         
-        stage('Install Dependencies') {
+        stage('Build Docker Image') {
             steps {
-                echo 'Installing npm dependencies...'
-                bat 'npm install'
+                echo 'Building Docker image...'
+                script {
+                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                    docker.build("${DOCKER_IMAGE}:latest")
+                }
             }
         }
         
-        stage('Build Application') {
+        stage('Stop Old Container') {
             steps {
-                echo 'Building application...'
-                bat 'npm run build'
-            }
-        }
-        
-        stage('Stop Old Process') {
-            steps {
-                echo 'Stopping any existing process on port 5173...'
+                echo 'Stopping old container if running...'
                 script {
                     bat """
-                        for /f "tokens=5" %%a in ('netstat -aon ^| findstr :5173') do taskkill /F /PID %%a || exit 0
+                        docker stop ${CONTAINER_NAME} || exit 0
+                        docker rm ${CONTAINER_NAME} || exit 0
                     """
                 }
             }
         }
         
-        stage('Start Application') {
+        stage('Run Container') {
             steps {
-                echo 'Starting application...'
+                echo 'Starting new container...'
                 script {
-                    bat 'start /B npm run start'
-                    sleep(time: 10, unit: 'SECONDS')
+                    bat """
+                        docker run -d ^
+                            --name ${CONTAINER_NAME} ^
+                            -p ${PORT}:3000 ^
+                            --env-file .env.local ^
+                            --restart unless-stopped ^
+                            ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    """
                 }
             }
         }
@@ -66,7 +68,19 @@ pipeline {
             steps {
                 echo 'Checking if application is running...'
                 script {
-                    bat 'curl -f http://localhost:5173 || exit 1'
+                    sleep(time: 10, unit: 'SECONDS')
+                    bat """
+                        curl -f http://localhost:${PORT} || exit 1
+                    """
+                }
+            }
+        }
+        
+        stage('Cleanup Old Images') {
+            steps {
+                echo 'Cleaning up old Docker images...'
+                script {
+                    bat "docker image prune -f"
                 }
             }
         }
@@ -75,10 +89,17 @@ pipeline {
     post {
         success {
             echo '✅ Pipeline completed successfully!'
-            echo 'Application is running at http://localhost:5173'
+            echo "Application is running at http://localhost:${PORT}"
         }
         failure {
             echo '❌ Pipeline failed!'
+            script {
+                bat "docker logs ${CONTAINER_NAME} || exit 0"
+            }
+        }
+        always {
+            echo 'Cleaning up workspace...'
+            cleanWs()
         }
     }
 }
