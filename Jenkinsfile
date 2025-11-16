@@ -2,104 +2,52 @@ pipeline {
     agent any
     
     environment {
-        DOCKER_IMAGE = 'travel-agency'
-        DOCKER_TAG = "${BUILD_NUMBER}"
-        CONTAINER_NAME = 'travel-agency-app'
-        PORT = '5173'
         ENV_FILE = credentials('travel-agency-env')
     }
     
     stages {
         stage('Checkout') {
             steps {
-                echo 'Checking out code...'
+                echo 'Checking out code from repository...'
                 checkout scm
             }
         }
         
         stage('Environment Setup') {
             steps {
-                echo 'Copying environment file from credentials...'
+                echo 'Setting up environment variables...'
                 script {
                     bat "copy \"%ENV_FILE%\" .env.local"
                 }
             }
         }
         
-        stage('Build Docker Image') {
+        stage('Install Dependencies') {
             steps {
-                echo 'Building Docker image...'
-                script {
-                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
-                    docker.build("${DOCKER_IMAGE}:latest")
-                }
+                echo 'Installing npm dependencies...'
+                bat 'npm install'
             }
         }
         
-        stage('Stop Old Container') {
+        stage('Build Application') {
             steps {
-                echo 'Stopping old container if running...'
-                script {
-                    bat """
-                        docker stop ${CONTAINER_NAME} || exit 0
-                        docker rm ${CONTAINER_NAME} || exit 0
-                    """
-                }
-            }
-        }
-        
-        stage('Run Container') {
-            steps {
-                echo 'Starting new container...'
-                script {
-                    bat """
-                        docker run -d ^
-                            --name ${CONTAINER_NAME} ^
-                            -p ${PORT}:3000 ^
-                            --env-file .env.local ^
-                            --restart unless-stopped ^
-                            ${DOCKER_IMAGE}:${DOCKER_TAG}
-                    """
-                }
-            }
-        }
-        
-        stage('Health Check') {
-            steps {
-                echo 'Checking if application is running...'
-                script {
-                    sleep(time: 10, unit: 'SECONDS')
-                    bat """
-                        curl -f http://localhost:${PORT} || exit 1
-                    """
-                }
-            }
-        }
-        
-        stage('Cleanup Old Images') {
-            steps {
-                echo 'Cleaning up old Docker images...'
-                script {
-                    bat "docker image prune -f"
-                }
+                echo 'Building React Router application...'
+                bat 'npm run build'
             }
         }
     }
     
     post {
         success {
-            echo '✅ Pipeline completed successfully!'
-            echo "Application is running at http://localhost:${PORT}"
+            echo '✅ Build completed successfully!'
+            echo '📦 Build artifacts are ready'
+            echo 'ℹ️  Your app is still running on http://localhost:5173'
         }
         failure {
-            echo '❌ Pipeline failed!'
-            script {
-                bat "docker logs ${CONTAINER_NAME} || exit 0"
-            }
+            echo '❌ Build failed! Check the logs above.'
         }
         always {
-            echo 'Cleaning up workspace...'
-            cleanWs()
+            echo 'Pipeline execution completed'
         }
     }
 }
