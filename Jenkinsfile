@@ -1,12 +1,9 @@
 pipeline {
     agent any
     
-    tools {
-        nodejs 'NodeJS'
-    }
-    
     environment {
         ENV_FILE = credentials('travel-agency-env')
+        PATH = "C:\\Program Files\\nodejs;${env.PATH}"
     }
     
     stages {
