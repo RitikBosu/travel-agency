@@ -1,6 +1,10 @@
 pipeline {
     agent any
     
+    tools {
+        nodejs 'NodeJS'
+    }
+    
     environment {
         ENV_FILE = credentials('travel-agency-env')
     }
