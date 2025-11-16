@@ -21,7 +21,7 @@ pipeline {
             steps {
                 echo 'Copying environment file from credentials...'
                 script {
-                    sh 'cp $ENV_FILE .env.local'
+                    bat "copy \"%ENV_FILE%\" .env.local"
                 }
             }
         }
@@ -40,9 +40,9 @@ pipeline {
             steps {
                 echo 'Stopping old container if running...'
                 script {
-                    sh """
-                        docker stop ${CONTAINER_NAME} || true
-                        docker rm ${CONTAINER_NAME} || true
+                    bat """
+                        docker stop ${CONTAINER_NAME} || exit 0
+                        docker rm ${CONTAINER_NAME} || exit 0
                     """
                 }
             }
@@ -52,12 +52,12 @@ pipeline {
             steps {
                 echo 'Starting new container...'
                 script {
-                    sh """
-                        docker run -d \
-                            --name ${CONTAINER_NAME} \
-                            -p ${PORT}:3000 \
-                            --env-file .env.local \
-                            --restart unless-stopped \
+                    bat """
+                        docker run -d ^
+                            --name ${CONTAINER_NAME} ^
+                            -p ${PORT}:3000 ^
+                            --env-file .env.local ^
+                            --restart unless-stopped ^
                             ${DOCKER_IMAGE}:${DOCKER_TAG}
                     """
                 }
@@ -69,7 +69,7 @@ pipeline {
                 echo 'Checking if application is running...'
                 script {
                     sleep(time: 10, unit: 'SECONDS')
-                    sh """
+                    bat """
                         curl -f http://localhost:${PORT} || exit 1
                     """
                 }
@@ -80,9 +80,7 @@ pipeline {
             steps {
                 echo 'Cleaning up old Docker images...'
                 script {
-                    sh """
-                        docker image prune -f
-                    """
+                    bat "docker image prune -f"
                 }
             }
         }
@@ -96,7 +94,7 @@ pipeline {
         failure {
             echo '❌ Pipeline failed!'
             script {
-                sh "docker logs ${CONTAINER_NAME} || true"
+                bat "docker logs ${CONTAINER_NAME} || exit 0"
             }
         }
         always {
