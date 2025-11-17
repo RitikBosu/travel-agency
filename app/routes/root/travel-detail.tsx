@@ -174,14 +174,21 @@ const TravelDetail = ({ loaderData }: Route.ComponentProps) => {
                     </section>
                 ))}
 
-                <a href={paymentLink} className="flex">
-                    <ButtonComponent className="button-class" type="submit">
-                        <span className="p-16-semibold text-white">
-                            Pay to join the trip
-                        </span>
-                        <span className="price-pill">{estimatedPrice}</span>
-                    </ButtonComponent>
-                </a>
+                {paymentLink && (
+                    <a 
+                        href={paymentLink} 
+                        className="flex"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        <ButtonComponent className="button-class" type="button">
+                            <span className="p-16-semibold text-white">
+                                Pay to join the trip
+                            </span>
+                            <span className="price-pill">{estimatedPrice}</span>
+                        </ButtonComponent>
+                    </a>
+                )}
 
             </section>
             </div>
